@@ -12,17 +12,17 @@
 const double PI  = 3.141592653589793238463;
 const double D2R = PI / 180.0;
 
-radar::radar(SDL_Window* window, SDL_Renderer* renderer)
-    : renderer(renderer), window(window), centerX(0), centerY(0), diameter(0)
+Radar::Radar(SDL_Window* window, SDL_Renderer* renderer)
+    : renderer(renderer), window(window), centerX(0), centerY(0), diameter(0), lastAngle(-1)
 {
     distances.fill(1.0);
 }
 
-radar::~radar()
+Radar::~Radar()
 {
 }
 
-void radar::findCenter() {
+void Radar::findCenter() {
     SDL_GetWindowSize(window, &winX, &winY);
 
     centerX = winX / 2;
@@ -31,7 +31,7 @@ void radar::findCenter() {
     diameter = std::min(centerX, centerY);
 }
 
-void radar::empty() {
+void Radar::drawBackground() {
     //Create radar background
     SDL_SetRenderDrawColor(renderer, RADAR_BACKGROUND);
     SDL_RenderClear(renderer);
@@ -54,8 +54,15 @@ void radar::empty() {
     }
 }
 
-void radar::addDistance(unsigned angle, float object) {
-    distances[angle] = object;
+void Radar::addDistance(const Input& input) {
+    distances[input.angle] = input.distance;
+    lastAngle = input.angle;
+    drawBackground();
+    drawDistances();
+    present();
+}
+
+void Radar::drawDistances() {
     for (unsigned i = 0; i < 360; ++i) {
         if (distances[i] < 1.0) { //There is an object on this angle
             float sinA = sin(i * D2R);
@@ -71,7 +78,7 @@ void radar::addDistance(unsigned angle, float object) {
                                centerY - diameter * sinA);
 
             //Draw also direction line
-            if (i == angle) {
+            if (i == lastAngle) {
                 SDL_SetRenderDrawColor(renderer, DIRECTION_COLOR);
                 SDL_RenderDrawLine(renderer,
                                    centerX,
@@ -83,6 +90,13 @@ void radar::addDistance(unsigned angle, float object) {
     }
 }
 
-void radar::draw() {
+
+void Radar::present() {
     SDL_RenderPresent(renderer);
+}
+
+void Radar::redraw() {
+    drawBackground();
+    drawDistances();
+    present();
 }
