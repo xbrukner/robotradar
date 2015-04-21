@@ -5,10 +5,15 @@
 
 using namespace std;
 
-int main()
+int main(int argc, char** argv)
 {
     SDL_Window* window;
     SDL_Renderer* renderer;
+
+    if (argc != 2) {
+        std::cout << "Usage: robotradar pipe" << std::endl;
+        return 0;
+    }
 
     // Initialize SDL.
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -30,7 +35,8 @@ int main()
 
     //Create InputEvent
     InputEvent ie;
-    ie.demo();
+    //ie.demo();
+    ie.fileInput(argv[1]);
 
     bool quit = false;
     while (!quit) {

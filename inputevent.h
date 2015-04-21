@@ -15,6 +15,7 @@ public:
     void handleEvent(const SDL_Event &event, Radar& Radar);
 
     SDL_Thread* demo();
+    SDL_Thread* fileInput(const char* path);
 };
 
 #endif // INPUTEVENT_H
