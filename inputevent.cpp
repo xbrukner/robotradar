@@ -19,7 +19,7 @@ extern "C" {
 
 InputEvent::InputEvent()
     : eventId(SDL_RegisterEvents(1)),
-    mutex(SDL_CreateMutex());
+    mutex(SDL_CreateMutex())
 {
     assert(eventId >= 0);
     assert(mutex);
@@ -47,7 +47,7 @@ void InputEvent::handleEvent(const SDL_Event &event, Radar& radar) {
         delete input;
     }
     if (event.type == SDL_KEYDOWN) {
-       SDL_ScanCode code = event.key.keysym.scancode;
+       SDL_Scancode code = event.key.keysym.scancode;
        //https://wiki.libsdl.org/SDLScancodeLookup
        if (code >= 4 && code <= 39) {
            lock();
@@ -58,14 +58,14 @@ void InputEvent::handleEvent(const SDL_Event &event, Radar& radar) {
 }
 
 void InputEvent::lock() {
-   assert(SDL_LockMutex(mutex));
+   assert(SDL_LockMutex(mutex) == 0);
 }
 
 void InputEvent::unlock() {
-   assert(SDL_UnlockMutex(mutex));
+   assert(SDL_UnlockMutex(mutex) == 0);
 }
 
-bool InputEvent::hasKeys() {
+bool InputEvent::hasKey() {
    lock();
    if (keys.size()) {
        return true;
@@ -190,15 +190,18 @@ int socketThread(void* data) {
     }
     freeaddrinfo(res0);
 
-    fd_set fds;
-    timeval tv;
+    std::string str;
+    bool lastValid = false;
+    unsigned nums = 0;
 
     while (true) {
-        char input[20];
+        char input[4096] = "";
 
+        fd_set fds;
+        timeval tv;
         //Wait for input
         FD_ZERO(&fds);
-        FD_SET(pipe, &fds);
+        FD_SET(sock, &fds);
 
         //Set waiting time of 10us
         tv.tv_sec = 0;
@@ -210,7 +213,8 @@ int socketThread(void* data) {
             return 0;
         }
         if (s == 0) {
-            if (ie->hasKeys()) {
+            if (ie->hasKey()) {
+                std::cout << "SEND: " << ie->keys << std::endl;
                 write(sock, ie->keys.c_str(), ie->keys.length());
                 ie->clear();
                 ie->unlock();
@@ -218,29 +222,34 @@ int socketThread(void* data) {
         }
 
         if (FD_ISSET(sock, &fds)) {
-            int r = read(sock, input, 20);
+            int r = read(sock, input, 4096);
             if (r > 0) {
-                std::stringstream ss;
-                bool lastValid = false;
-                for (unsigned i = 0; i < 20 && input[i] != 0; ++i) {
+                for (unsigned i = 0; i < r; ++i) {
                     char c = input[i];
-                    if ( ('0' <= c && c <= '9') ||
-                            c == '.') {
-                        ss << c;
-                        lastValid == true;
+                    if ( ('0' <= c && c <= '9') || c == '.') {
+                        str.push_back(c);
+                        lastValid = true;
                     }
-                    if (lastValid && c == ' ') {
-                        ss << c;
+                    if (lastValid && (c == ' ' || c == '\r' || c == '\n')) {
+                        str.push_back(' ');
                         lastValid = false;
+                        nums ++;
                     }
                 }
 
-                int angle;
-                float distance;
+                while (nums >= 2) {
+                    int angle;
+                    float distance;
 
-                ss >> angle >> distance;
-                if (ss.good()) {
-                    ie->pushEvent(Input(angle, distance));
+                    std::stringstream ss(str);
+                    ss >> angle >> distance;
+                    if (ss.good()) {
+                        //std::cout << "Input: " << angle << " " << distance << std::endl;
+                        ie->pushEvent(Input(angle, distance));
+                    }
+                    std::string::size_type first = str.find(' ') + 1;
+                    str = str.substr(str.find(' ', first) + 1);
+                    nums -= 2;
                 }
             }
             if (r < 0) {
@@ -249,7 +258,7 @@ int socketThread(void* data) {
             }
         }
     }
-    close(s);
+    close(sock);
 
     return 0;
 }

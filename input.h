@@ -10,7 +10,7 @@ struct Input {
 
     Input(unsigned angle, float distance) :
         angle(angle), distance(distance) {
-        if (angle > 360) angle = 0;
+        if (angle >= 360) angle = 0;
         if (distance < 0.0) distance = 0.0;
         if (distance > 1.0) distance = 1.0;
     }

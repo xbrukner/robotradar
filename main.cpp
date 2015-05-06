@@ -5,13 +5,13 @@
 
 using namespace std;
 
-int main(int argc, char** argv)
+int main(int argc, const char** argv)
 {
     SDL_Window* window;
     SDL_Renderer* renderer;
 
-    if (argc != 2) {
-        std::cout << "Usage: robotradar pipe" << std::endl;
+    if (argc != 3) {
+        std::cout << "Usage: robotradar ip port" << std::endl;
         return 0;
     }
 
@@ -36,7 +36,8 @@ int main(int argc, char** argv)
     //Create InputEvent
     InputEvent ie;
     //ie.demo();
-    ie.fileInput(argv[1]);
+    //ie.fileInput(argv[1]);
+    ie.socketInput(argv);
 
     bool quit = false;
     while (!quit) {
