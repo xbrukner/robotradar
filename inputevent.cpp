@@ -11,6 +11,10 @@ extern "C" {
 #include <sys/stat.h>
 #include <sys/select.h>
 #include <fcntl.h>
+
+#include <sys/socket.h>
+#include <netdb.h>
+#include <err.h>
 }
 
 InputEvent::InputEvent()
@@ -99,6 +103,96 @@ int fileThread(void* data) {
             return 0;
         }
     }
+
+    return 0;
+}
+
+typedef std::pair<InputEvent*, const char**> socketType;
+int socketThread(void* data) {
+    socketType* in = (socketType*) data;
+
+    InputEvent* ie = in->first;
+    const char** argv = in->second;
+
+    //getaddrinfo(3)
+    struct addrinfo hints, *res, *res0;
+    int error;
+    int s;
+    const char *cause = NULL;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    error = getaddrinfo(argv[1], argv[2], &hints, &res0);
+    if (error) {
+        errx(1, "%s", gai_strerror(error));
+        /*NOTREACHED*/
+    }
+    s = -1;
+    for (res = res0; res; res = res->ai_next) {
+        s = socket(res->ai_family, res->ai_socktype,
+                   res->ai_protocol);
+        if (s < 0) {
+            cause = "socket";
+            continue;
+        }
+
+        if (connect(s, res->ai_addr, res->ai_addrlen) < 0) {
+            cause = "connect";
+            close(s);
+            s = -1;
+            continue;
+        }
+
+        break;  /* okay we got one */
+    }
+    if (s < 0) {
+        err(1, "%s", cause);
+        /*NOTREACHED*/
+    }
+    freeaddrinfo(res0);
+
+
+    /*int pipe = open(path, O_RDONLY, O_NONBLOCK, 0);
+
+    if (pipe == -1) {
+        perror("pipe");
+        return 0;
+    }
+
+    fd_set fds;
+    FD_ZERO(&fds);
+
+    while (true) {
+        char input[20];
+
+        //Wait for input
+        FD_SET(pipe, &fds);
+
+        int s = select(pipe + 1, &fds, NULL, NULL, NULL);
+        if (s < 0) {
+            perror("select");
+            return 0;
+        }
+
+        int r = read(pipe, input, 20);
+        if (r > 0) {
+            std::string s(input);
+            std::stringstream ss(s);
+            int angle;
+            float distance;
+
+            ss >> angle >> distance;
+            if (ss.good()) {
+                ie->pushEvent(Input(angle, distance));
+            }
+        }
+        if (r < 0) {
+            perror("read");
+            return 0;
+        }
+    }
+    */
 
     return 0;
 }
