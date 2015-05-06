@@ -159,8 +159,9 @@ int socketThread(void* data) {
     const char *cause = NULL;
 
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = PF_UNSPEC;
+    hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = 6; //TCP
     error = getaddrinfo(argv[1], argv[2], &hints, &res0);
     if (error) {
         errx(1, "%s", gai_strerror(error));
@@ -215,7 +216,12 @@ int socketThread(void* data) {
         if (s == 0) {
             if (ie->hasKey()) {
                 std::cout << "SEND: " << ie->keys << std::endl;
-                write(sock, ie->keys.c_str(), ie->keys.length());
+                ie->keys.push_back('\n');
+                s = write(sock, ie->keys.c_str(), ie->keys.length());
+                if (s < 0) {
+                    perror("write");
+                    return 0;
+                }
                 ie->clear();
                 ie->unlock();
             }
@@ -244,7 +250,7 @@ int socketThread(void* data) {
                     std::stringstream ss(str);
                     ss >> angle >> distance;
                     if (ss.good()) {
-                        //std::cout << "Input: " << angle << " " << distance << std::endl;
+                        std::cout << "Input: " << angle << " " << distance << std::endl;
                         ie->pushEvent(Input(angle, distance));
                     }
                     std::string::size_type first = str.find(' ') + 1;
