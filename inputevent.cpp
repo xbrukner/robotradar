@@ -18,9 +18,11 @@ extern "C" {
 }
 
 InputEvent::InputEvent()
-    : eventId(SDL_RegisterEvents(1))
+    : eventId(SDL_RegisterEvents(1)),
+    mutex(SDL_CreateMutex());
 {
     assert(eventId >= 0);
+    assert(mutex);
 }
 
 InputEvent::~InputEvent()
@@ -44,6 +46,42 @@ void InputEvent::handleEvent(const SDL_Event &event, Radar& radar) {
         radar.addDistance(*input);
         delete input;
     }
+    if (event.type == SDL_KEYDOWN) {
+       SDL_ScanCode code = event.key.keysym.scancode;
+       //https://wiki.libsdl.org/SDLScancodeLookup
+       if (code >= 4 && code <= 39) {
+           lock();
+           addKey(SDL_GetScancodeName(event.key.keysym.scancode)[0]);
+           unlock();
+       }
+    }
+}
+
+void InputEvent::lock() {
+   assert(SDL_LockMutex(mutex));
+}
+
+void InputEvent::unlock() {
+   assert(SDL_UnlockMutex(mutex));
+}
+
+bool InputEvent::hasKeys() {
+   lock();
+   if (keys.size()) {
+       return true;
+   }
+   else {
+      unlock();
+      return false;
+   }
+}
+
+void InputEvent::clear() {
+    keys.clear();
+}
+
+void InputEvent::addKey(char c) {
+    keys.push_back(c);
 }
 
 int demoThread(void* data) {
@@ -117,7 +155,7 @@ int socketThread(void* data) {
     //getaddrinfo(3)
     struct addrinfo hints, *res, *res0;
     int error;
-    int s;
+    int sock;
     const char *cause = NULL;
 
     memset(&hints, 0, sizeof(hints));
@@ -128,71 +166,90 @@ int socketThread(void* data) {
         errx(1, "%s", gai_strerror(error));
         /*NOTREACHED*/
     }
-    s = -1;
+    sock = -1;
     for (res = res0; res; res = res->ai_next) {
-        s = socket(res->ai_family, res->ai_socktype,
+        sock = socket(res->ai_family, res->ai_socktype,
                    res->ai_protocol);
-        if (s < 0) {
+        if (sock < 0) {
             cause = "socket";
             continue;
         }
 
-        if (connect(s, res->ai_addr, res->ai_addrlen) < 0) {
+        if (connect(sock, res->ai_addr, res->ai_addrlen) < 0) {
             cause = "connect";
-            close(s);
-            s = -1;
+            close(sock);
+            sock = -1;
             continue;
         }
 
         break;  /* okay we got one */
     }
-    if (s < 0) {
+    if (sock < 0) {
         err(1, "%s", cause);
         /*NOTREACHED*/
     }
     freeaddrinfo(res0);
 
-
-    /*int pipe = open(path, O_RDONLY, O_NONBLOCK, 0);
-
-    if (pipe == -1) {
-        perror("pipe");
-        return 0;
-    }
-
     fd_set fds;
-    FD_ZERO(&fds);
+    timeval tv;
 
     while (true) {
         char input[20];
 
         //Wait for input
+        FD_ZERO(&fds);
         FD_SET(pipe, &fds);
 
-        int s = select(pipe + 1, &fds, NULL, NULL, NULL);
+        //Set waiting time of 10us
+        tv.tv_sec = 0;
+        tv.tv_usec = 10;
+
+        int s = select(sock + 1, &fds, NULL, NULL, &tv);
         if (s < 0) {
             perror("select");
             return 0;
         }
-
-        int r = read(pipe, input, 20);
-        if (r > 0) {
-            std::string s(input);
-            std::stringstream ss(s);
-            int angle;
-            float distance;
-
-            ss >> angle >> distance;
-            if (ss.good()) {
-                ie->pushEvent(Input(angle, distance));
+        if (s == 0) {
+            if (ie->hasKeys()) {
+                write(sock, ie->keys.c_str(), ie->keys.length());
+                ie->clear();
+                ie->unlock();
             }
         }
-        if (r < 0) {
-            perror("read");
-            return 0;
+
+        if (FD_ISSET(sock, &fds)) {
+            int r = read(sock, input, 20);
+            if (r > 0) {
+                std::stringstream ss;
+                bool lastValid = false;
+                for (unsigned i = 0; i < 20 && input[i] != 0; ++i) {
+                    char c = input[i];
+                    if ( ('0' <= c && c <= '9') ||
+                            c == '.') {
+                        ss << c;
+                        lastValid == true;
+                    }
+                    if (lastValid && c == ' ') {
+                        ss << c;
+                        lastValid = false;
+                    }
+                }
+
+                int angle;
+                float distance;
+
+                ss >> angle >> distance;
+                if (ss.good()) {
+                    ie->pushEvent(Input(angle, distance));
+                }
+            }
+            if (r < 0) {
+                perror("read");
+                return 0;
+            }
         }
     }
-    */
+    close(s);
 
     return 0;
 }
@@ -203,4 +260,8 @@ SDL_Thread* InputEvent::demo() {
 
 SDL_Thread* InputEvent::fileInput(const char *path) {
     return SDL_CreateThread(fileThread, "FileThread", new fileType(this, path));
+}
+
+SDL_Thread* InputEvent::socketInput(const char **argv) {
+   return SDL_CreateThread(socketThread, "SocketThread", new socketType(this, argv));
 }
