@@ -4,10 +4,18 @@
 #include <iostream>
 #include <cmath>
 
+#if 0
 #define BACKGROUND 0xF1, 0xFF, 0xF7, 255
 #define OBJECT_COLOR 0x2C, 0x61, 0x43, 255
 #define RADAR_BACKGROUND 0xB9, 0xFF, 0xD8, 255
 #define DIRECTION_COLOR 0x29, 0x47, 0x56, 255
+#endif
+
+#define OBJECT_COLOR 0x47, 0x90, 0x30, 255
+#define BACKGROUND 0x05, 0x13, 0x00, 255
+#define RADAR_BACKGROUND 0x11, 0x48, 0x00, 255
+//#define DIRECTION_COLOR 0x51, 0x00, 0x0B, 255
+#define DIRECTION_COLOR 0xEB, 0x9F, 0xA9, 255
 
 const double PI  = 3.141592653589793238463;
 const double D2R = PI / 180.0;
@@ -64,10 +72,10 @@ void Radar::addDistance(const Input& input) {
 
 void Radar::drawDistances() {
     for (unsigned i = 0; i < 360; ++i) {
-        if (distances[i] < 1.0) { //There is an object on this angle
-            float sinA = sin(i * D2R);
-            float cosA = cos(i * D2R);
+        float sinA = sin(i * D2R);
+        float cosA = cos(i * D2R);
 
+        if (distances[i] < 1.0) { //There is an object on this angle
             //Draw only from this point to the edge, as center is already filled with background
             //Y is inverted
             SDL_SetRenderDrawColor(renderer, OBJECT_COLOR);
@@ -76,16 +84,15 @@ void Radar::drawDistances() {
                                centerY - diameter * sinA * distances[i],
                                centerX + diameter * cosA,
                                centerY - diameter * sinA);
-
-            //Draw also direction line
-            if (i == lastAngle) {
-                SDL_SetRenderDrawColor(renderer, DIRECTION_COLOR);
-                SDL_RenderDrawLine(renderer,
-                                   centerX,
-                                   centerY,
-                                   centerX + diameter * cosA * distances[i],
-                                   centerY - diameter * sinA * distances[i]);
-            }
+        }
+        //Draw also direction line
+        if (i == lastAngle) {
+            SDL_SetRenderDrawColor(renderer, DIRECTION_COLOR);
+            SDL_RenderDrawLine(renderer,
+                               centerX,
+                               centerY,
+                               centerX + diameter * cosA * distances[i],
+                               centerY - diameter * sinA * distances[i]);
         }
     }
 }
