@@ -97,6 +97,11 @@ void Radar::drawDistances() {
     }
 }
 
+void Radar::clear() {
+    for (unsigned i = 0; i < 360; ++i) {
+        distances[i] = 1.0;
+    }
+}
 
 void Radar::present() {
     SDL_RenderPresent(renderer);

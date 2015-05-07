@@ -54,6 +54,9 @@ void InputEvent::handleEvent(const SDL_Event &event, Radar& radar) {
            addKey(SDL_GetScancodeName(event.key.keysym.scancode)[0]);
            unlock();
        }
+       if (code == SDL_SCANCODE_ESCAPE) {
+           radar.clear();
+       }
     }
 }
 
@@ -215,7 +218,7 @@ int socketThread(void* data) {
         }
         if (s == 0) {
             if (ie->hasKey()) {
-                std::cout << "SEND: " << ie->keys << std::endl;
+                //std::cout << "SEND: " << ie->keys << std::endl;
                 ie->keys.push_back('\n');
                 s = write(sock, ie->keys.c_str(), ie->keys.length());
                 if (s < 0) {
@@ -250,7 +253,7 @@ int socketThread(void* data) {
                     std::stringstream ss(str);
                     ss >> angle >> distance;
                     if (ss.good()) {
-                        std::cout << "Input: " << angle << " " << distance << std::endl;
+                        //std::cout << "Input: " << angle << " " << distance << std::endl;
                         ie->pushEvent(Input(angle, distance));
                     }
                     std::string::size_type first = str.find(' ') + 1;
@@ -261,6 +264,9 @@ int socketThread(void* data) {
             if (r < 0) {
                 perror("read");
                 return 0;
+            }
+            if (r == 0) {
+                exit(0);
             }
         }
     }

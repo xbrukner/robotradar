@@ -24,6 +24,7 @@ public:
     void present();
     void redraw();
     void drawDistances();
+    void clear();
 };
 
 #endif // RADAR_H
