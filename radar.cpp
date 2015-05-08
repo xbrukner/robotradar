@@ -80,9 +80,9 @@ void Radar::drawDistances() {
             //Y is inverted
             SDL_SetRenderDrawColor(renderer, OBJECT_COLOR);
             SDL_RenderDrawLine(renderer,
-                               centerX + diameter * cosA * distances[i],
+                               centerX - diameter * cosA * distances[i],
                                centerY - diameter * sinA * distances[i],
-                               centerX + diameter * cosA,
+                               centerX - diameter * cosA,
                                centerY - diameter * sinA);
         }
         //Draw also direction line
@@ -91,7 +91,7 @@ void Radar::drawDistances() {
             SDL_RenderDrawLine(renderer,
                                centerX,
                                centerY,
-                               centerX + diameter * cosA * distances[i],
+                               centerX - diameter * cosA * distances[i],
                                centerY - diameter * sinA * distances[i]);
         }
     }

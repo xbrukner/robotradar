@@ -254,7 +254,7 @@ int socketThread(void* data) {
                     ss >> angle >> distance;
                     if (ss.good()) {
                         //std::cout << "Input: " << angle << " " << distance << std::endl;
-                        ie->pushEvent(Input(angle, distance));
+                        ie->pushEvent(Input((angle + 90) % 360, distance));
                     }
                     std::string::size_type first = str.find(' ') + 1;
                     str = str.substr(str.find(' ', first) + 1);
